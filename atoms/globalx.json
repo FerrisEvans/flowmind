@@ -1,0 +1,122 @@
+{
+    "package": "globalx",
+    "description": "GlobalX is a tool uesed for file transfer & web-space. This module contains the atomic services of GlobalX.",
+    "service_root_folder": "./globalx",
+    "atoms": [
+        {
+            "id": "globalx.permission.grant_permission",
+            "category": "permission",
+            "description": "If user don't have permission to transfer files, grant permission to him.",
+            "constraints": {
+                "preconditions": [],
+                "postconditions": [],
+                "invariants": []
+            },
+            "inputs": [
+                {
+                    "type": "string",
+                    "name": "user_id",
+                    "description": "The ID of the user.",
+                    "required": true,
+                    "properties": null
+                }
+            ],
+            "outputs": null,
+            "side_effects": [],
+            "errors": []
+        }, {
+            "id": "globalx.permission.query_permissions",
+            "category": "permission",
+            "description": "Query if user has permission to transfer files.",
+            "constraints": {
+                "preconditions": [],
+                "postconditions": [],
+                "invariants": []
+            },
+            "inputs": [
+                {
+                    "type": "string",
+                    "name": "user_id",
+                    "description": "The ID of the user.",
+                    "required": true,
+                    "properties": null
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "bool",
+                    "name": "has_permission",
+                    "description": "Whether the user has permission to transfer files.",
+                    "properties": null
+                }
+            ],
+            "side_effects": [],
+            "errors": []
+        }, {
+            "id": "globalx.space.query_quota",
+            "category": "space",
+            "description": "Query the quota of the user.",
+            "constraints": {
+                "preconditions": [],
+                "postconditions": [],
+                "invariants": []
+            },
+            "inputs": [
+                {
+                    "type": "string",
+                    "name": "user_id",
+                    "description": "The ID of the user.",
+                    "required": true,
+                    "properties": null
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "int",
+                    "name": "quota",
+                    "description": "The quota of the user's web-space.",
+                    "properties": null
+                }
+            ],
+            "side_effects": [],
+            "errors": []
+        }, {
+            "id": "globalx.transfer.file_transfer",
+            "category": "transfer",
+            "description": "Transfer a file from one user to another.",
+            "constraints": {
+                "preconditions": [
+                    "sender has access/permission to transfer files.",
+                    "receiver has enough space quota to receive the file."
+                ],
+                "postconditions": [],
+                "invariants": []
+            },
+            
+            "inputs": [
+                {
+                    "type": "string",
+                    "name": "file_path",
+                    "description": "The path of the file to transfer.",
+                    "required": true,
+                    "properties": null
+                }, {
+                    "type": "string",
+                    "name": "sender_id",
+                    "description": "The ID of the sender.",
+                    "required": true,
+                    "properties": null
+                }, {
+                    "type": "string",
+                    "name": "receiver_id",
+                    "description": "The ID of the receiver.",
+                    "required": true,
+                    "properties": null
+                }
+            ],
+            "outputs": null,
+            "side_effects": [],
+            "errors": []
+        }
+    ]
+}

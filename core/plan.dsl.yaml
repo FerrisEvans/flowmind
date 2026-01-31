@@ -1,0 +1,19 @@
+# Plan DSL: IR produced by Planner LLM. Execution order is derived from depends_on (DAG).
+target: ${After analysis, the determined user intent}
+plan:
+  steps:
+    - step_id: ${Optional. Unique id for this step; used in depends_on and in input refs like ${step_id.outputs.output_name}. If omitted, executor may use step index.}
+      id: ${id of atomic service, must exist in atoms registry}
+      target: ${The purpose of calling this service.}
+      inputs:
+        ${Input field names defined in atom}: ${User input / literal} or ${step_id.outputs.output_name}
+    - step_id: ${Optional. Unique per step.}
+      id: ${id of atomic service}
+      target: ${The purpose of calling this service.}
+      inputs:
+        ${Input field names defined in atom}: ${User input} | ${step_id.outputs.output_name}
+      depends_on:
+        - ${step_id of prerequisite step(s), not atom id}
+    ...
+  outputs:
+    ${Output field names}: ${The final result presented to the user by this plan}

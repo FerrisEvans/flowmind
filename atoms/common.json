@@ -1,0 +1,36 @@
+{
+    "package": "common",
+    "description": "This is a general module, where the atomic services are not bound to any specific business.",
+    "service_root_folder": "./common",
+    "atoms": [
+        {
+            "id": "common.file.get_file_size",
+            "category": "file",
+            "description": "Get the size of the file from the file_path.",
+            "constraints": {
+                "preconditions": [],
+                "postconditions": [],
+                "invariants": []
+            },
+            "inputs": [
+                {
+                    "type": "string",
+                    "name": "file_path",
+                    "description": "The path of the file.",
+                    "required": true,
+                    "properties": null
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "int",
+                    "name": "file_size",
+                    "description": "The size of the file.",
+                    "properties": null
+                }
+            ],
+            "side_effects": [],
+            "errors": []
+        }
+    ]
+}

@@ -1,0 +1,47 @@
+.dynamic-canvas {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.canvas-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.canvas-description {
+  color: #6c757d;
+  margin-bottom: 24px;
+}
+
+.canvas-loading,
+.canvas-empty,
+.canvas-waiting,
+.canvas-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 400px;
+  color: #6c757d;
+}
+
+.canvas-error {
+  color: #dc3545;
+}
+
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
