@@ -40,3 +40,21 @@ Planner LLM（如果执行过程中有报错或者非正常返回，则需要Rep
 2. 如果把全部原子服务的定义给模型，以后会有 token 爆炸以及上下文爆炸的问题。
    - 2.1 按 package / category 做检索或分类，只把「可能相关的」atoms 子集给 Planner；或
    - 2.2 做两层：先选「用哪些 skill 包 / 哪几个 category」，再在这些里选具体 atoms 并编排。
+
+## 5. 运行方式
+
+主业务流程已用 Python 串起：**User Intent → Planner → Structured Plan → Validator → 返回 plan + 校验结果**。
+
+- **HTTP 接口**（用于 Postman 等测试）：
+  - 启动：在项目根目录执行 `uv run python main.py` 或 `uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000`
+  - `POST /plan`：请求体 `{ "intent": "用户意图文本" }`，返回 `{ "plan": {...}, "validation": { "valid", "errors" | "execution_order", "warnings" } }`
+- **代码调用**：`from main import run_main_flow; run_main_flow("用户意图")` 返回 `{ "plan", "validation" }`。
+
+校验通过时 `validation.execution_order` 为按依赖排序的 step 列表，供后续 Executor 按序执行。
+
+
+```bash
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+uv run python main.py
+```
