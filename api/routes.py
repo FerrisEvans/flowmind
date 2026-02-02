@@ -32,7 +32,7 @@ def create_plan(req: PlanRequest) -> PlanResponse:
     """
     intent = (req.intent or "").strip()
     registry = get_atoms_registry()
-    plan_doc = planner_plan(intent)
+    plan_doc = planner_plan(intent, atoms_registry=registry)  # Pass registry for efficiency
     validation = validate_plan(plan_doc, registry)
     return PlanResponse(plan=plan_doc, validation=validation)
 

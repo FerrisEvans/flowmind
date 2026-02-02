@@ -24,7 +24,7 @@ def run_main_flow(intent: str, atoms_dir: Path | None = None) -> dict:
     Returns { "plan": ..., "validation": { "valid", "errors" or "execution_order", "warnings" } }.
     """
     registry = load_atoms_registry(atoms_dir)
-    plan_doc = planner_plan(intent)
+    plan_doc = planner_plan(intent, atoms_registry=registry)  # Pass registry for efficiency
     validation = validate_plan(plan_doc, registry)
     return {"plan": plan_doc, "validation": validation}
 
