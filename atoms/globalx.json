@@ -92,7 +92,6 @@
                 "postconditions": [],
                 "invariants": []
             },
-            
             "inputs": [
                 {
                     "type": "string",

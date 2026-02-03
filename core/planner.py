@@ -98,7 +98,7 @@ def _build_planning_prompt(intent: str, atoms_registry: dict) -> str:
     Build the prompt for LLM planning, including user intent and available atoms.
     """
     atoms_list = []
-    for atom_id, atom in sorted(atoms_registry.items()):
+    for _, atom in sorted(atoms_registry.items()):
         atoms_list.append(_format_atom_for_prompt(atom))
 
     atoms_section = "\n\n".join(atoms_list)

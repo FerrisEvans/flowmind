@@ -18,9 +18,7 @@ out/
 
 # local env files
 .env
-
-# vercel
-.vercel
+.ignore**
 
 # typescript
 *.tsbuildinfo
