@@ -13,6 +13,7 @@ out/
 .pnp.js
 
 # misc
+.DS_Store
 .DS_Store/
 *.pem
 
