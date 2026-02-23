@@ -1,60 +1,100 @@
-# 需求文档：AI 驱动的动态业务流生成平台 (flowmind)
+# Flowmind: AI-Driven Dynamic Business Flow Generation Platform
 
-## 1. 项目概述
+## 1. Project Overview
 
-这是一个能够根据**用户语义意图**动态编排**业务逻辑流**并实时生成相应**交互 UI** 的系统。这套系统中有一系列以业务为维度划分「技能包」，每个技能包中包含一系列原子服务。每个原子服务并不是一项既定的业务，而是类似增、删、改、查、上传、下载等操作的API。原子服务可以被自由组合，形成一条条的业务流程。
+Flowmind is a system that dynamically orchestrates **business logic flows** based on **user semantic intent** and generates corresponding **interactive UIs** in real-time. The system contains a series of "skill packages" divided by business dimension, each containing atomic services. Each atomic service is not a predetermined business, but rather APIs similar to CRUD operations, upload, download, etc. Atomic services can be freely combined to form business processes.
 
-比如生活中的“点外卖”场景，现有的软件服务的做法是用户选择餐厅→选择菜品→填地址→付款→送餐。而现在我们有比如「附近餐厅推荐」、「菜品口味筛选」、「地址校验」、「支付方式选择」等原子服务，AI可以根据用户的需求，动态拼接这些原子服务，形成一条条的业务流程。这其中，我们并不会通过任何方式向AI定义好业务流程，而是通过AI自己学习用户的需求，自己生成业务流程。
+For example, in the real-life "food delivery" scenario, existing software services follow the process: user selects restaurant → chooses dishes → enters address → payment → delivery. With our system, we might have atomic services like "nearby restaurant recommendation", "dish taste filtering", "address verification", "payment method selection", etc. AI can dynamically assemble these atomic services based on user needs to form business flows. We don't define the business processes in any way for the AI, but rather let the AI learn user needs by itself and generate business processes automatically.
 
 ---
 
-## 2. 执行流程
+## 2. Execution Flow
 
-User Intent（由前端的 Chat Window 获取（暂时不做，由 Postman 执行调用接口进行测试））
-   ↓
-Planner LLM（初始化推理模型）
-   ↓
-Structured Plan（调用模型生成符合 DSL 中自定义协议的结构化计划）
-   ↓
-Human Approval（使用 Human in the Loop，把生成的结构化数据转化成用户可理解的语义化输入，并让用户确认。目前只做用户确认，不可以让用户自己修改）
-   ↓
-Executor（解析生成的计划，并寻找对应的原子服务依次执行。在执行过程中，需要用户提供input，此时需要前台生成表单交给用户填写。）
-   ↓
-Execution Feedback（执行过程反馈）
-   ↓
-Planner LLM（如果执行过程中有报错或者非正常返回，则需要Replan。如果顺利完成，则告知用户。）
-
-
-## 3. 技术方案
-
-- 原子服务能力定义: `project folder/atoms/*.json`。明确原子服务的能力，以及业务边界。
-- 让推理模型理解原子服务，分析用户意图后，自行决断调用哪些服务来完成用户的意图。
-- 推理模型会编排这些原子服务，并输出符合自定义协议的 IR。（DSL 文件：`project folder/core/plan.dsl.yaml`）
-- Plan 校验：对生成的 Plan 做结构与语义校验后再进入 Human Approval / Executor。输入输出与校验规则见 `core/plan_validation.md`。
-
-目前先把执行流程中的 Structured Plan 这步及以上做完，下边的步骤暂时不做。
-
-## 4. 备注
-
-1. 生成 plan 的时候可以约定「所有 step 的 output 自动进入一个共享上下文，后续 step 可按名引用」。
-2. 如果把全部原子服务的定义给模型，以后会有 token 爆炸以及上下文爆炸的问题。
-   - 2.1 按 package / category 做检索或分类，只把「可能相关的」atoms 子集给 Planner；或
-   - 2.2 做两层：先选「用哪些 skill 包 / 哪几个 category」，再在这些里选具体 atoms 并编排。
-
-## 5. 运行方式
-
-主业务流程已用 Python 串起：**User Intent → Planner → Structured Plan → Validator → 返回 plan + 校验结果**。
-
-- **HTTP 接口**（用于 Postman 等测试）：
-  - 启动：在项目根目录执行 `uv run python main.py` 或 `uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000`
-  - `POST /plan`：请求体 `{ "intent": "用户意图文本" }`，返回 `{ "plan": {...}, "validation": { "valid", "errors" | "execution_order", "warnings" } }`
-- **代码调用**：`from main import run_main_flow; run_main_flow("用户意图")` 返回 `{ "plan", "validation" }`。
-
-校验通过时 `validation.execution_order` 为按依赖排序的 step 列表，供后续 Executor 按序执行。
-
-
-```bash
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-uv run python main.py
 ```
+User Intent (obtained from front-end Chat Window - temporarily implemented via Postman API calls for testing)
+   ↓
+Planner LLM (initialize inference model)
+   ↓
+Structured Plan (call model to generate structure plan compliant with DSL protocol)
+   ↓
+Plan Validation (structural and semantic validation of the plan against atom registry and DSL rules)
+   ↓
+Human Approval (use Human in the Loop to convert structured data into user-understandable semantic input for confirmation. Currently only user confirmation is supported, user cannot modify the plan themselves)
+   ↓
+Executor (parse generated plan, find corresponding atomic services and execute them in sequence. During execution, user input may be required, requiring the front-end to generate forms for user completion.)
+   ↓
+Execution Feedback (execution process feedback)
+   ↓
+Planner LLM (if errors occur or abnormal returns occur during execution, replan is required. If completed successfully, notify the user.)
+```
+
+## 3. Technical Solution
+
+- **Atomic service capability definition**: `project folder/atoms/*.json`. Defines atomic service capabilities and business boundaries.
+- **LLM understanding**: Let the inference model understand atomic services, analyze user intent and decide which services to call to fulfill user intent.
+- **Orchestration**: The inference model orchestrates these atomic services and outputs an Intermediate Representation (IR) compliant with the custom protocol. (DSL file: `project folder/core/plan.dsl.yaml`)
+- **Plan validation**: Structural and semantic validation of generated plans before proceeding to Human Approval / Executor. Input/output and validation logic are implemented in `core/plan_validator.py` and guided by `core/plan.dsl.yaml`.
+
+Currently implemented up to the Plan Validation step in the execution flow (User Intent → Planner → Structured Plan → Validator → Response); subsequent steps (Human Approval, Executor, etc.) are not implemented yet.
+
+## 4. Notes
+
+1. When generating plans, establish the convention that "all step outputs automatically enter a shared context, subsequent steps can reference by name".
+2. Providing all atomic service definitions to the model may lead to token explosion and context explosion issues.
+   - 2.1 Categorize by package/category and provide only "potentially relevant" atom subsets to the Planner; or
+   - 2.2 Use a two-layer approach: first select "which skill packages / categories" to use, then select specific atoms from those categories for orchestration.
+
+## 5. Running Instructions
+
+The main business flow has been connected with Python: **User Intent → Planner → Structured Plan → Validator → Return plan + validation result**.
+
+### Prerequisites
+- Python 3.10+
+- Node.js and npm (for frontend)
+- uv package manager
+
+### Setup
+1. Install dependencies with `uv`:
+   ```bash
+   pip install uv  # if you don't have it already
+   uv sync
+   ```
+2. Copy `.env.example` to `.env` and set required environment variables:
+   ```
+   OPENAI_API_KEY=your_openai_api_key
+   OPENAI_MODEL=gpt-4
+   OPENAI_BASE_URL=https://api.openai.com/v1
+   ```
+3. Start the server:
+   ```bash
+   uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+   Or alternatively:
+   ```bash
+   uv run python main.py
+   ```
+
+### API Usage
+- **Health Check**: `GET /health` - Check if the service is running
+- **Plan Generation**: `POST /plan` with request body `{ "intent": "user intent text" }`, returns `{ "plan": {...}, "validation": { "valid", "errors" | "execution_order", "warnings" } }`
+
+When validation passes, `validation.execution_order` contains a step list sorted by dependencies, for subsequent Executor to execute in order.
+
+### Programmatic Usage
+You can also call the flow directly from Python:
+```python
+from main import run_main_flow
+result = run_main_flow("user intent")
+# Returns: { "plan": plan_doc, "validation": { "valid", "errors"|"execution_order", "warnings" } }
+```
+
+### For More Details
+- Core architecture: See `AGENTS.md`
+- Module-specific documentation:
+  - `core/AGENTS.md` - Planner, provider, validator details
+  - `api/AGENTS.md` - API endpoints and models
+  - `atoms/AGENTS.md` - Atom definitions and implementations
+  - `web/AGENTS.md` - Frontend architecture
+- Validation rules and implementation: See `core/plan_validator.py`
+- Plan DSL: See `core/plan.dsl.yaml`

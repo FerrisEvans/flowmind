@@ -2,7 +2,7 @@
 Plan validator: validate Planner output (structured plan) against schema and atoms registry.
 Input: plan_doc (dict), atoms_registry (dict id -> atom_def).
 Output: { valid: bool, errors?: [...], warnings?: [...], execution_order?: [...] }
-See core/plan_validation.md for full spec.
+See core/AGENTS.md for detailed validation rules.
 """
 
 import re
