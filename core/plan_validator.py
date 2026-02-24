@@ -61,7 +61,8 @@ def validate_plan(plan_doc: dict, atoms_registry: dict) -> dict:
     elif not isinstance(plan_doc.get("plan"), dict):
         err("INVALID_TYPE", "Field 'plan' must be an object", "plan")
 
-    plan = plan_doc.get("plan") or {}
+    raw_plan = plan_doc.get("plan")
+    plan = raw_plan if isinstance(raw_plan, dict) else {}
     steps = plan.get("steps")
 
     # --- S3: plan.steps non-empty array ---

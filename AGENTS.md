@@ -9,7 +9,7 @@ Flowmind is an AI-driven platform that transforms **user intent** into **structu
 The codebase follows a modular architecture with clear separation of concerns:
 
 ### Core Components
-- **Core** (`/core`): Planner LLM, LLM provider abstraction, plan DSL (`plan.dsl.yaml`), plan validator, and atoms loader
+- **Core** (`/core`): Planner LLM, LLM provider abstraction, plan DSL (`plan.dsl.yaml`), plan validator, executor, and atoms loader
 - **API** (`/api`): FastAPI routes and Pydantic request/response models; exposes `POST /plan` and `GET /health`
 - **Atoms** (`/atoms`): Atomic service definitions (`*.json`) and Python implementations organized by packages
 - **Web** (`/web`): React + TypeScript frontend with three-column layout (Canvas, ChatPanel, Navigation)
@@ -25,13 +25,14 @@ For detailed technical information about each module, refer to the specific docu
 1. **User Intent** → Natural language description of desired business flow
 2. **Planner** → LLM generates structured plan based on available atoms
 3. **Validator** → Validates plan structure and semantics against predefined rules
-4. **Response** → Returns validated plan with execution order or error details
+4. **Executor** → Resolves atom callables, resolves input references, executes steps in topological order
+5. **Result** → Returns structured execution result with per-step outputs
 
 ## Current Scope
 
-**Implemented:** User Intent → Planner → Structured Plan → Validator → Response
+**Implemented:** User Intent → Planner → Structured Plan → Validator → Executor → Result
 
-**Planned but not implemented:** Human-in-the-loop approval and Executor for running the generated plans.
+**Not yet implemented:** See [Deferred Work](#deferred-work) below.
 
 ## Implementation Status Matrix
 
@@ -41,8 +42,9 @@ For detailed technical information about each module, refer to the specific docu
 | Validator (`core/plan_validator.py`) | Implemented | Returns `validation.valid`, `errors`, `warnings`, `execution_order` |
 | API (`api/routes.py`) | Implemented | `POST /plan` and `GET /health` are live |
 | Atoms Python functions (`atoms/**`) | Implemented as mock behavior | Current implementations are mock/demo functions with print outputs |
+| Executor (`core/executor.py`) | Implemented | Consumes validated plan, resolves callables + references, executes steps sequentially; user inputs are plan literals (mock) |
 | Human approval | Planned | Not implemented yet |
-| Executor | Planned | Not implemented yet; only `execution_order` is produced today |
+| `POST /execute` API endpoint | Planned | Executor exists but is not yet exposed via API |
 
 ## Planner-Validator-Executor Boundary Contract
 
@@ -57,8 +59,9 @@ Even though Executor is not implemented yet, the boundary contract is fixed by c
 3. Step input values can be:
    - literal values (string/number/object)
    - references in `${step_id.outputs.output_name}` format
-4. Executor (future) should consume the validated plan plus `validation.execution_order`, resolve references from previously produced step outputs, and execute steps in that order.
+4. Executor consumes the validated plan plus `validation.execution_order`, resolves `${step_id.outputs.output_name}` references from previously produced step outputs, and executes steps in that order.
 5. Validation failure is a hard stop for execution. The response includes structured errors (`code`, `message`, `path`) for replanning or user-facing feedback.
+6. Executor returns `{ success, step_results[], error? }`. Each step result contains `step_id`, `atom_id`, `status` ("completed"/"failed"), `outputs`, and optional `error`.
 
 ## Running the Application
 
@@ -75,3 +78,19 @@ Even though Executor is not implemented yet, the boundary contract is fixed by c
 ### API Usage
 - `POST /plan` with `{ "intent": "user intent text" }` → `{ "plan": {...}, "validation": {...} }`
 - `GET /health` for health check
+
+## Deferred Work
+
+Items below are recognized as needed but not yet implemented. They are ordered roughly by dependency/priority.
+
+| # | Item | Description | Blocked by |
+|---|------|-------------|------------|
+| 1 | **`POST /execute` API endpoint** | Expose the executor via a REST endpoint so the frontend (or any client) can trigger execution of a validated plan | — |
+| 2 | **Real user inputs from frontend** | Replace plan-literal mock values with actual user-provided data; define the input injection contract between frontend and executor | #1 |
+| 3 | **Human-in-the-loop (HITL)** | Pause execution at steps that require user input (`WAITING` state), resume on frontend event; the "blocking-waking" workflow mechanism from the product spec | #2 |
+| 4 | **Async / parallel execution** | Independent steps (no mutual dependency) can run concurrently instead of sequentially | — |
+| 5 | **Step retry / partial re-execution** | Allow re-running a failed step or resuming execution from a specific point | — |
+| 6 | **Execution state persistence** | Persist execution context and step results so that execution can survive process restarts | #3 |
+| 7 | **Tests for executor** | Unit tests for `_resolve_callable`, `_resolve_inputs`, `_map_outputs`; integration tests for `execute()` | — |
+| 8 | **Tests for planner & validator** | Cover all validator error codes, planner mock fallback, LLM response parsing, atoms loader edge cases | — |
+| 9 | **Frontend integration** | Wire ChatInterface → `POST /plan` → `POST /execute` → Canvas visualization | #1 |

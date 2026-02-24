@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Core module contains the fundamental components of the Flowmind platform responsible for generating and validating structured business flows from user intent. This includes the Planner (LLM integration), Provider (LLM client), Atoms Loader (registry management), and Plan Validator (DSL compliance verification).
+The Core module contains the fundamental components of the Flowmind platform responsible for generating, validating, and executing structured business flows from user intent. This includes the Planner (LLM integration), Provider (LLM client), Atoms Loader (registry management), Plan Validator (DSL compliance verification), and Executor (step-by-step plan execution).
 
 ## Components
 
@@ -127,12 +127,73 @@ Validates generated plans against structural and semantic rules implemented in `
 Planned/optional future error code:
 - `REF_BEFORE_DEPENDENCY`: A stricter explicit reference-order violation code (not currently emitted by `core/plan_validator.py`)
 
+### 5. Executor (`core/executor.py`)
+
+Consumes a validated plan response and executes atom functions in topological order.
+
+**Function:** `execute(plan_response, atoms_registry)`
+
+**Inputs:**
+- `plan_response`: Full response dict (same shape as `POST /plan` output) with `plan` and `validation` keys
+- `atoms_registry`: Registry mapping atom IDs to their definitions
+
+**Precondition:** `plan_response["validation"]["valid"]` must be `True`; otherwise execution is refused immediately.
+
+**Execution Loop (for each step in `validation.execution_order`):**
+1. Look up step definition from `plan.steps` by effective step_id
+2. Resolve the atom Python callable via `_resolve_callable(atom_id)`
+3. Resolve input values via `_resolve_inputs(inputs, context)` — replace `${step_id.outputs.output_name}` references with concrete values from previous step outputs; literal values pass through
+4. Call the atom function with resolved inputs as keyword arguments
+5. Map the return value to named outputs via `_map_outputs(return_value, atom_def)`
+6. Store outputs in the execution context keyed by step_id
+
+**Callable Resolution (`_resolve_callable`):**
+- Atom ID convention: `package.domain.action`
+- Module path: `atoms.{package}.{domain}` (imported via `importlib`)
+- Function: `getattr(module, action)`
+- Raises `ExecutorError("UNRESOLVED_ATOM", ...)` if module or function cannot be found
+
+**Output Mapping (`_map_outputs`):**
+- No outputs declared → `{}`
+- One output declared → `{ output_name: return_value }`
+- Multiple outputs declared → expects dict return, maps by output names
+
+**Return:**
+```python
+{
+    "success": True,  # or False
+    "step_results": [
+        {
+            "step_id": "query_perm",
+            "atom_id": "globalx.permission.query_permissions",
+            "status": "completed",  # or "failed"
+            "outputs": {"has_permission": True},
+            "error": None  # or "[ERROR_CODE] message"
+        }
+    ],
+    "error": None  # top-level error message if execution aborted
+}
+```
+
+**Error Codes:**
+- `STEP_NOT_FOUND`: step_id from execution_order not found in plan.steps
+- `UNRESOLVED_ATOM`: Cannot resolve atom ID to a Python callable
+- `UNRESOLVED_REF`: Input reference points to missing step or output in execution context
+- `STEP_EXECUTION_ERROR`: Atom function raised an exception at runtime
+
+**Current Limitations:**
+- Execution is synchronous and sequential (no parallel step execution)
+- User-facing inputs use plan literal values as mocks
+- No human-in-the-loop pausing; all steps run to completion or first failure
+- Execution aborts on first step failure (no retry or skip)
+
 ## Data Flow
 
 1. **Input:** User intent and atoms registry
 2. **Processing:** Planner generates structured plan using LLM
 3. **Validation:** Plan validator checks compliance with rules
-4. **Output:** Validated plan with execution order or error details
+4. **Execution:** Executor resolves callables, resolves references, runs steps in order
+5. **Output:** Execution result with per-step status and outputs
 
 ## Error Handling
 
@@ -151,5 +212,6 @@ Planned/optional future error code:
 ## Integration Points
 
 - **API Layer:** Receives user intent, returns validated plans
-- **Atoms Registry:** Uses loaded atom definitions for validation
+- **Atoms Registry:** Used by validator for schema checks and by executor for output mapping
+- **Atoms Python Implementations:** Executor dynamically imports and calls atom functions
 - **Plan DSL:** Validates against schema defined in `plan.dsl.yaml`

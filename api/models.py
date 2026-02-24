@@ -14,3 +14,4 @@ class PlanResponse(BaseModel):
     """Response model for plan creation endpoint."""
     plan: dict
     validation: dict
+    execution: dict | None = None
