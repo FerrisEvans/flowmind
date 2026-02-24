@@ -1,4 +1,3 @@
-/** Three-column layout component */
 import React from "react";
 import { Navigation } from "../Navigation/SessionList";
 import { DynamicCanvas } from "../Canvas/DynamicCanvas";
@@ -8,13 +7,13 @@ import "./ThreeColumnLayout.css";
 export const ThreeColumnLayout: React.FC = () => {
   return (
     <div className="three-column-layout">
-      <aside className="navigation-column">
+      <aside className="layout-nav">
         <Navigation />
       </aside>
-      <main className="canvas-column">
+      <main className="layout-canvas">
         <DynamicCanvas />
       </main>
-      <aside className="chat-column">
+      <aside className="layout-chat">
         <ChatInterface />
       </aside>
     </div>

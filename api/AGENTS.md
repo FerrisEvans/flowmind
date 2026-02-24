@@ -29,7 +29,15 @@ Generates a structured business flow plan from user intent.
           "id": "string (atom service identifier)",
           "target": "string (purpose of this step)",
           "inputs": "object (input parameters)",
-          "depends_on": "string[] (optional dependencies)"
+          "depends_on": "string[] (optional dependencies)",
+          "input_schema": [
+            {
+              "name": "string",
+              "type": "string",
+              "required": "boolean (optional)",
+              "description": "string (optional)"
+            }
+          ]
         }
       ],
       "outputs": "object (optional final outputs)"
@@ -68,6 +76,51 @@ Generates a structured business flow plan from user intent.
 - Status: `422 Unprocessable Entity`
 - Trigger: Invalid request body shape/type (e.g. missing or non-string `intent`)
 
+**Enriched response for frontend forms:** Each step in `plan.plan.steps` is augmented with `input_schema`, taken from the atoms registry for that step’s `id` (atom id). The frontend uses `input_schema` to render per-step input fields (e.g. string → text input) without a separate atoms request. See `api/routes.py` (enrichment loop before `validate_plan`).
+
+### POST `/execute`
+
+Executes a plan with per-step user-provided inputs. The client sends the plan document and a mapping from effective step id to input values; the server merges these into each step’s `inputs`, re-validates, and runs the executor.
+
+**Request Body:**
+```json
+{
+  "plan": { "target": "...", "plan": { "steps": [...], "outputs": {...} } },
+  "validation": { "valid": true, "execution_order": ["step_id_1", ...] } (optional),
+  "user_inputs": {
+    "step_id_1": { "input_name": "value", ... },
+    "step_id_2": { "input_name": "value", ... }
+  }
+}
+```
+
+- `plan`: Full plan document (same shape as `POST /plan` response).
+- `validation`: Optional; if omitted, the server validates after merging user inputs.
+- `user_inputs`: Map from effective step identifier (explicit `step_id` or index as string) to object of input name → value. These override or fill placeholders in each step’s `inputs`.
+
+**Response:**
+```json
+{
+  "plan": { ... },
+  "validation": { "valid": true, "execution_order": [...], ... },
+  "execution": {
+    "success": true | false,
+    "step_results": [
+      {
+        "step_id": "string",
+        "atom_id": "string",
+        "status": "completed" | "failed",
+        "outputs": { ... },
+        "error": null | "string"
+      }
+    ],
+    "error": null | "string (top-level error if execution aborted)"
+  }
+}
+```
+
+- Status: `200 OK`; body always includes `plan`, `validation`, and `execution`. If validation fails after applying user inputs, `execution.success` is false and `execution.error` describes the failure.
+
 ### GET `/health`
 
 Provides health check for the service.
@@ -88,9 +141,11 @@ Provides health check for the service.
 Defined in `api/models.py` using Pydantic:
 
 - `PlanRequest`: Contains user intent
-- `PlanResponse`: Complete plan and validation result
+- `PlanResponse`: `plan`, `validation`, `execution` (optional)
+- `ExecuteRequest`: `plan`, `validation` (optional), `user_inputs` (map step_id → input name → value)
+- `ExecuteResponse`: `plan`, `validation`, `execution` (required)
 
-`GET /health` currently returns a plain dict from route code and does not use a dedicated Pydantic response model.
+`GET /health` returns a plain dict from route code and does not use a dedicated Pydantic response model.
 
 ## Architecture
 
